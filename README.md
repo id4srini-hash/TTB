@@ -42,3 +42,22 @@ Since the application has no backend server or database dependencies, local setu
    ```bash
    git clone [https://github.com/your-username/repository-name.git](https://github.com/your-username/repository-name.git)
    cd repository-name
+
+# Technical Assumptions Made
+
+Scope Isolation: It is assumed that this tool operates as an isolated verification utility. It does not write back to or integrate with the legacy .NET COLA core database framework.
+Document Retention & PII: Images processed through this prototype are volatile. They are held temporarily in browser memory buffer streams and are destroyed upon tab closure, eliminating immediate federal document retention or data privacy compliance overhead for the prototype phase.
+Image Quality: The proof of concept assumes reasonable contrast and upright orientation of label artwork uploads.
+📈 Engineering Roadmap & Future Enhancements
+While a localized text-matching approach solves immediate network and infrastructure hurdles, raw OCR engines often introduce systematic noise (such as misinterpreting punctuation or breaking sentences awkwardly).
+To scale this to a production-ready system, the following enhancements are proposed:
+1. Mitigating OCR Matching Flaws on Complex Labels
+If text extraction contains minor character errors or spacing noise, exact substring matching can cause false failures on the Government Health Warning. To fix this, we will transition from basic string checking to an advanced programmatic pipeline:
+Image Preprocessing Pipeline: Integrate a client-side canvas adjustment step using OpenCV.js to automatically convert images to high-contrast grayscale, apply Otsu's binarization, and execute deskewing algorithms to straighten text before it hits the OCR engine.
+Tokenized Similarity Indexing: Replace exact containment checks for the warning body with a Normalized Levenshtein Distance or Jaccard Similarity calculation. This allows the system to tolerate non-material OCR errors (e.g., extracting "alcholic" instead of "alcoholic") by passing any warning block that meets a 95% token similarity threshold, while preserving a strict binary check on the GOVERNMENT WARNING: header string.
+2. Implementing Batch Processing (Janet's Requirement)
+To accommodate high-volume importers dropping 200–300 applications at a time, the client-side architecture can scale up without server infrastructure:
+WebWorker Thread Pooling: Implement a file queue manager that utilizes JavaScript's concurrent thread pool capability. This allows the UI to process 4–8 labels concurrently in the background without locking up the user's browser view, pushing progress bars to a central queue dashboard.
+3. Long-Term Enterprise Enclave Modeling
+If the TTB chooses to authorize deep integration, the architecture would shift from client-side JavaScript to an internal enterprise network path:
+Azure GovCloud Private Endpoints: Once a FedRAMP boundary is established, the application can be wrapped in a private Docker container hosted on Azure App Services. It would query an Azure OpenAI Service or Azure Document Intelligence endpoint routed entirely through an internal Virtual Network (VNet). This honors Marcus's outbound firewall blocks while delivering enterprise-grade layout analysis and reasoning capabilities.
