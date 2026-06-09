@@ -45,10 +45,20 @@ Since the application has no backend server or database dependencies, local setu
 
 # Technical Assumptions Made
 
-Scope Isolation: It is assumed that this tool operates as an isolated verification utility. It does not write back to or integrate with the legacy .NET COLA core database framework.
-Document Retention & PII: Images processed through this prototype are volatile. They are held temporarily in browser memory buffer streams and are destroyed upon tab closure, eliminating immediate federal document retention or data privacy compliance overhead for the prototype phase.
-Image Quality: The proof of concept assumes reasonable contrast and upright orientation of label artwork uploads.
-📈 Engineering Roadmap & Future Enhancements
+## Scope Isolation: 
+
+It is assumed that this tool operates as an isolated verification utility. It does not write back to or integrate with the legacy .NET COLA core database framework.
+
+## Document Retention & PII: 
+
+Images processed through this prototype are volatile. They are held temporarily in browser memory buffer streams and are destroyed upon tab closure, eliminating immediate federal document retention or data privacy compliance overhead for the prototype phase.
+
+## Image Quality: 
+
+The proof of concept assumes reasonable contrast and upright orientation of label artwork uploads.
+
+## 📈 Engineering Roadmap & Future Enhancements
+
 While a localized text-matching approach solves immediate network and infrastructure hurdles, raw OCR engines often introduce systematic noise (such as misinterpreting punctuation or breaking sentences awkwardly).
 To scale this to a production-ready system, the following enhancements are proposed:
 1. Mitigating OCR Matching Flaws on Complex Labels
