@@ -3,7 +3,8 @@
 This repository contains a standalone, zero-dependency proof-of-concept application designed for the Department of the Treasury's Alcohol and Tobacco Tax and Trade Bureau (TTB). The application automates the verification process for Certificate of Label Approval (COLA) applications by cross-referencing field data against printed text on alcohol beverage labels.
 
 ## 🚀 Live Deployed Application URL
-[Insert Your GitHub Pages URL Here, e.g., https://yourusername.github.io/your-repo-name]
+
+https://id4srini-hash.github.io/TTB/
 
 ---
 
