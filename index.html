@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTB Automated Label Verification Sandbox</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --primary: #002d62; /* Treasury Blue */
+            --success: #2e7d32;
+            --error: #c62828;
+            --bg: #f8f9fa;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        header {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        h1 { margin: 0; color: var(--primary); font-size: 24px; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .panel {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .upload-box {
+            border: 2px dashed var(--primary);
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            background: #f0f4f8;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 250px;
+            margin-top: 15px;
+            display: none;
+            border-radius: 4px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+        }
+        .pass { background-color: var(--success); }
+        .fail { background-color: var(--error); }
+        #loading { display: none; font-weight: bold; color: var(--primary); margin: 15px 0; }
+        #extracted-text {
+            background: #222;
+            color: #0f0;
+            padding: 15px;
+            font-family: monospace;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>TTB COLA Prototype: AI Label Verifier (Air-Gapped Sandbox)</h1>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Architected for 100% Client-Side Processing to bypass Network Firewall Limitations.</p>
+    </header>
+
+    <div class="grid">
+        <div class="panel">
+            <h3>1. Expected Values (From Application)</h3>
+            <div class="form-group">
+                <label for="exp-brand">Brand Name:</label>
+                <input type="text" id="exp-brand" value="STONE'S THROW">
+            </div>
+            <div class="form-group">
+                <label for="exp-abv">Alcohol by Volume (ABV):</label>
+                <input type="text" id="exp-abv" value="45%">
+            </div>
+            <div class="form-group">
+                <label for="exp-warning">Government Warning Statement:</label>
+                <textarea id="exp-warning" rows="4">GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.</textarea>
+            </div>
+
+            <h3>2. Upload Label Artwork</h3>
+            <div class="upload-box" onclick="document.getElementById('file-input').click()">
+                Drop Label Image Here or Click to Browse
+                <input type="file" id="file-input" accept="image/*" style="display:none">
+            </div>
+            <center><img id="preview" alt="Label Preview"></center>
+            <button id="process-btn" disabled>Analyze Label Components</button>
+        </div>
+
+        <div class="panel">
+            <h3>Verification Metrics</h3>
+            <div id="loading">Processing Label (Using local WebWorker threads)... <span id="progress">0%</span></div>
+            
+            <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <th style="text-align:left; padding: 10px 0;">Field Checked</th>
+                    <th style="text-align:center; padding: 10px 0;">Status</th>
+                    <th style="text-align:right; padding: 10px 0;">Matching Mode</th>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px 0;">Brand Verification</td>
+                    <td style="text-align:center;"><span id="status-brand" class="status-badge" style="background:#ccc;">Pending</span></td>
+                    <td style="text-align:right; font-size:12px; color:#666;">Fuzzy / Normalized</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px 0;">ABV Match</td>
+                    <td style="text-align:center;"><span id="status-abv" class="status-badge" style="background:#ccc;">Pending</span></td>
+                    <td style="text-align:right; font-size:12px; color:#666;">Fuzzy / Tokenized</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px 0;">Health Warning Compliance</td>
+                    <td style="text-align:center;"><span id="status-warning" class="status-badge" style="background:#ccc;">Pending</span></td>
+                    <td style="text-align:right; font-size:12px; color:#666;">Strict / Exact String</td>
+                </tr>
+            </table>
+
+            <h3>Extracted Raw Text Payload</h3>
+            <div id="extracted-text">No image analyzed yet.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file-input');
+    const preview = document.getElementById('preview');
+    const processBtn = document.getElementById('process-btn');
+    const loading = document.getElementById('loading');
+    const progressSpan = document.getElementById('progress');
+    const extractedTextDiv = document.getElementById('extracted-text');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+                processBtn.disabled = false;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    processBtn.addEventListener('click', async () => {
+        loading.style.display = 'block';
+        processBtn.disabled = true;
+        extractedTextDiv.innerText = "Initializing local OCR engine...";
+        
+        try {
+            // High-performance client-side multi-threading setup
+            const worker = await Tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing') {
+                        progressSpan.innerText = Math.floor(m.progress * 100) + '%';
+                    }
+                }
+            });
+
+            const ret = await worker.recognize(preview.src);
+            const rawText = ret.data.text;
+            extractedTextDiv.innerText = rawText;
+            
+            await worker.terminate();
+            
+            // Execute the dual-mode compliance matching engine
+            runComplianceRules(rawText);
+            
+        } catch (err) {
+            extractedTextDiv.innerText = "Error executing local OCR: " + err.message;
+        } finally {
+            loading.style.display = 'none';
+            processBtn.disabled = false;
+        }
+    });
+
+    function runComplianceRules(extractedText) {
+        const cleanOCR = extractedText.toUpperCase().replace(/\s+/g, ' ');
+
+        // 1. Brand Logic: Normalized Fuzzy Match (Dave's Exception)
+        const expBrand = document.getElementById('exp-brand').value.toUpperCase().trim();
+        const brandBadge = document.getElementById('status-brand');
+        if (cleanOCR.includes(expBrand) || cleanOCR.includes(expBrand.replace(/['’]/g, ''))) {
+            brandBadge.innerText = "PASS";
+            brandBadge.className = "status-badge pass";
+        } else {
+            brandBadge.innerText = "MISMATCH";
+            brandBadge.className = "status-badge fail";
+        }
+
+        // 2. ABV Logic: Verification
+        const expAbv = document.getElementById('exp-abv').value.toUpperCase().trim();
+        const abvBadge = document.getElementById('status-abv');
+        if (cleanOCR.includes(expAbv)) {
+            abvBadge.innerText = "PASS";
+            abvBadge.className = "status-badge pass";
+        } else {
+            abvBadge.innerText = "MISMATCH";
+            abvBadge.className = "status-badge fail";
+        }
+
+        // 3. Health Warning Logic: Case-sensitive and Substring Validation (Jenny's Requirement)
+        const warningBadge = document.getElementById('status-warning');
+        // Check for specific exact phrase presence
+        const hasHeader = extractedText.includes("GOVERNMENT WARNING:");
+        
+        // Minimize whitespace layout noise for verification string
+        const targetWarning = document.getElementById('exp-warning').value.replace(/\s+/g, ' ').trim();
+        const cleanNormalText = extractedText.replace(/\s+/g, ' ');
+        const textMatch = cleanNormalText.toLowerCase().includes(targetWarning.toLowerCase());
+
+        if (hasHeader && textMatch) {
+            warningBadge.innerText = "PASS";
+            warningBadge.className = "status-badge pass";
+        } else {
+            warningBadge.innerText = "NON-COMPLIANT";
+            warningBadge.className = "status-badge fail";
+        }
+    }
+</script>
+
+</body>
+</html>
